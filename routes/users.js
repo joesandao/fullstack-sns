@@ -1,3 +1,8 @@
+/******************************************/
+/* ユーザー情報の取得、更新、削除、フォロー      */
+/******************************************/
+
+
 const router = require('express').Router();
 const User = require('../models/User');
 
@@ -42,4 +47,61 @@ router.delete("/:id", async (req,res) => {
             .json("アカウントを削除できません");
     }
 });
+
+//フォロー
+router.put("/:id/follow", async (req,res) => {
+    //bodyのほうが自分 paramsのほうが相手
+    if(req.body.userId !== req.params.id){
+        try{
+            const user = await User.findById(req.params.id);
+            const currentUser = await User.findById(req.body.userId);
+            if(!user.followers.includes(req.body.userId)){
+                await user.updateOne({
+                    $push: {followers: req.body.userId}
+                });
+                await currentUser.updateOne({
+                    $push: {followings: req.params.id}
+                });
+                res.status(200).json("フォローしました");
+            }else{
+                res.status(403).json("フォロー済みです");
+            }
+
+        }catch(err){
+            return res.status(500).json(err);
+        }
+    }else{
+        return res.status(403).json("自分をフォローできません");
+    }
+});
+
+//フォロー解除
+router.put("/:id/unfollow", async (req,res) => {
+    //bodyのほうが自分 paramsのほうが相手
+    if(req.body.userId !== req.params.id){
+        try{
+            const user = await User.findById(req.params.id);
+            const currentUser = await User.findById(req.body.userId);
+            //フォロワーに存在したらフォローを解除できる
+            if(user.followers.includes(req.body.userId)){
+                await user.updateOne({
+                    $pull: {followers: req.body.userId}
+                });
+                await currentUser.updateOne({
+                    $pull: {followings: req.params.id}
+                });
+                res.status(200).json("フォローを解除しました");
+            }else{
+                res.status(403).json("フォローを解除済みです。");
+            }
+
+        }catch(err){
+            return res.status(500).json(err);
+        }
+    }else{
+        return res.status(403).json("自分をフォロー解除できません");
+    }
+});
+
+
 module.exports = router;
